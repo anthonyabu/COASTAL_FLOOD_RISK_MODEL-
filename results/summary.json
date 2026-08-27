@@ -51,7 +51,7 @@
   "worst_mass_balance_pct_error": 2.1227263506010365e-12,
   "caveats": [
     "Terrain, road network and unit costs are synthetic.",
-    "Surge distribution (Gumbel) is illustrative, not gauge-fitted.",
+    "Surge distribution FITTED: GEV (Coles) by maximum likelihood, loc 0.6900 m, scale 0.1353 m, shape -0.1319, to annual maxima of the tide-removed surge residual at NOAA CO-OPS station 8418150 (Portland, Maine), 1980-2025, n = 46. Cross-checked in extRemes.",
     "Depth-damage curve is illustrative; shape is plausible, ordinates are not sourced.",
     "Tide and surge peaks assumed coincident (conservative joint-occurrence case).",
     "Wave setup, wave overtopping, rainfall and groundwater are not modelled.",
