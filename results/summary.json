@@ -52,6 +52,9 @@
   "caveats": [
     "Terrain, road network and unit costs are synthetic.",
     "Surge distribution FITTED: GEV (Coles) by maximum likelihood, loc 0.6900 m, scale 0.1353 m, shape -0.1319, to annual maxima of the tide-removed surge residual at NOAA CO-OPS station 8418150 (Portland, Maine), 1980-2025, n = 46. Cross-checked in extRemes.",
+    "Citation: Surge distribution fitted by maximum likelihood (GEV) to 46 annual maxima of tide-removed surge residual, NOAA CO-OPS 8418150 (Portland, Maine), 1980-2025; cross-checked in R (extRemes).",
+    "Tide amplitude (1.40 m) is ASSUMED, not verified against the published NOAA datums for the station.",
+    "Fitted surge is meteorological residual only: sea level rise was removed before fitting and must be added separately to still water level.",
     "Depth-damage curve is illustrative; shape is plausible, ordinates are not sourced.",
     "Tide and surge peaks assumed coincident (conservative joint-occurrence case).",
     "Wave setup, wave overtopping, rainfall and groundwater are not modelled.",
