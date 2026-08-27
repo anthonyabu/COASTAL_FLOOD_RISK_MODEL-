@@ -106,14 +106,15 @@ known to retard the dry-bed front. It bounds where the scheme is appropriate —
 valid for floodplain flow, not for supercritical or strongly advective flow.
 
 Mass balance was audited on every production run. Worst error across all 12 return
-periods: **0.00000%**, with zero flux-limiter correction.
+periods: **0.00000%**, with zero negative-depth clipping correction. Flux-limiter
+activation frequency is not currently logged.
 
 ---
 
 ## 3a. Extreme value analysis of the surge forcing
 
 The surge distribution was originally invented. It is now fitted to observed water
-levels (`code/fit_surge_gev_v2.R`).
+levels (`fit_surge_gev_v2.R`).
 
 **Method.** Hourly observed water level minus hourly astronomical prediction gives the
 residual. NOAA predictions reference the 1983-2001 tidal epoch, so the residual carries
@@ -122,13 +123,14 @@ removed year by year, leaving meteorological surge. Annual maxima are extracted 
 80% data-coverage filter, and a GEV is fitted by maximum likelihood in the Coles
 parameterisation.
 
-**Validation.** Two independent checks:
+**Checks.** One implementation cross-check and one datum-processing plausibility check:
 
-- The slope of the *removed* offset is a local sea level rise estimate: **+2.83 mm/yr
-  (p < 0.0001)**. This was not fitted to anything — it falls out of the datum handling —
-  and can be compared against NOAA's published trend for the station.
 - The hand-rolled MLE was cross-checked against the `extRemes` package, which returned
   **+0.6900, +0.1353, -0.1319 — identical to four decimal places**.
+- The slope of the *removed* offset is **+2.83 mm/yr (p < 0.0001)** and can be
+  compared with NOAA's published trend as a plausibility check on datum processing.
+  Because it comes from the same gauge record, it is not an independent validation
+  of the GEV model.
 
 **Result.**
 
@@ -246,14 +248,15 @@ The conclusion is that the vulnerability model, not the hazard model, is the bin
 constraint on this estimate. Effort spent refining the hydraulics past a certain point
 is misallocated while the damage curve remains uncalibrated.
 
-### 6.2 Conflating hydraulic and structural elevation inflates risk by ~3×
+### 6.2 Conflating hydraulic and structural elevation inflated historical v1 risk by ~3×
 
 The first working version assessed damage from water depth over the bed. At the bridged
 creek crossing this read several metres of water in the channel as several metres of
 water on the carriageway, so the highway appeared severely damaged in events whose
-surge never approached its crest. Separating `z` from `deck` moved EAD from $539,930/yr
-to $196,827/yr — a factor of 2.7 from one modelling distinction, with no change to the
-hydraulics.
+surge never approached its crest. In the obsolete v1 hazard/terrain configuration,
+separating `z` from `deck` moved EAD from $539,930/yr to $196,827/yr — a factor of 2.7
+from one modelling distinction, with no change to the hydraulics. These historical
+values are not directly comparable with the current fitted-hazard EAD of $13,210/yr.
 
 This is a general trap for network-scale assessments where assets are rasterised onto a
 DEM: bridges, culverts and elevated structures are exactly the assets where the two
@@ -272,32 +275,35 @@ assessment for this coastline would have to treat tide-surge timing as a joint
 probability rather than assuming the worst alignment, and that choice would plausibly
 matter more to the answer than any refinement of the hydraulic scheme.
 
-### 6.3 Static bathtub maps are adequate here — but only because the basin equilibrates fast
+### 6.3 Static–dynamic differences vary non-monotonically with duration
 
 Holding peak water level at the 100-year value and varying only surge duration:
 
 | Surge duration | Damage vs static bathtub |
 |---|---|
-| 1 h | 74 % |
-| 2 h and longer | 100–108 % |
+| 1 h | 96.8 % |
+| 2 h | 94.7 % |
+| 3 h | 95.8 % |
+| 6 h | 110.7 % |
+| 12 h | 102.1 % |
+| 24 h | 159.6 % |
 
 And roughness only matters while the basin is still filling:
 
 | Marsh Manning's n | 0.5 h surge | 1 h surge | 3 h surge |
 |---|---|---|---|
-| 0.03 | $1.59 M | $1.72 M | $2.49 M |
-| 0.30 | $0.66 M | $0.96 M | $2.01 M |
-| **Reduction** | **58 %** | **44 %** | **19 %** |
+| 0.03 | $0.61 M | $0.29 M | $0.33 M |
+| 0.30 | $0.00 M | $0.09 M | $0.16 M |
+| **Approx. reduction** | **100 %** | **69 %** | **52 %** |
 
-Friction controls the *rate* of filling, not the equilibrium level. For a 2 km
-low-relief plain and a multi-hour surge, the static map is a good approximation and the
-dynamic model buys little. For short, fast-moving events it overstates damage by ~26 %,
-and it cannot represent marsh attenuation at all, since roughness appears nowhere in a
-bathtub calculation.
-
-The practical implication: a screening study using static maps should state the surge
-durations over which that assumption holds. Any assessment of marsh or living
-shorelines as natural coastal protection requires a dynamic model by construction.
+The dynamic peak-inundation area remains below the static area, but dynamic damage
+exceeds the static estimate at 6, 12 and 24 h. This non-monotonic result must be
+diagnosed before it is interpreted physically. Candidate contributors include
+transient water-surface overshoot, the composite cellwise maximum-depth field,
+grid/timestep sensitivity and amplification by the nonlinear threshold damage curve.
+The roughness sweep demonstrates that a bathtub calculation cannot represent friction,
+but it is a diagnostic sensitivity study rather than a calibrated estimate of marsh
+protection benefit.
 
 ---
 

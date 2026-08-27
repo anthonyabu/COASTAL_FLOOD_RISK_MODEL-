@@ -13,11 +13,13 @@
 # (b) make the stationarity test fire on datum drift rather than storm climate.
 #
 # The removed offset is kept, because its slope is itself a local sea level rise
-# estimate and serves as an independent check on the whole pipeline.
+# estimate and provides a plausibility check on the datum processing.
 #
-# STATUS: the download and column-matching logic has been verified against the
-# live API. The fitting and plotting sections have NOT been executed by their
-# author. Run section by section and read the output at each stage.
+# STATUS: this script is the reproducible source for the GEV values reported in
+# README.md. A completed run must produce annual_maxima.csv,
+# surge_return_levels.csv, gev_fit_summary.txt and gev_diagnostics.png. Do not
+# update the reported parameters from a partial run; inspect the console output,
+# convergence messages and all four diagnostic panels first.
 # =============================================================================
 
 # ---- configuration ----------------------------------------------------------
@@ -27,11 +29,13 @@ YEAR_FROM    <- 1980
 YEAR_TO      <- 2025
 DATUM        <- "MSL"
 CACHE_DIR    <- "noaa_cache"
+GEV_OUT_DIR  <- file.path("results", "gev")
 MIN_COVERAGE <- 0.80           # reject years with less than this fraction of hours
 
 RETURN_PERIODS <- c(1.5, 2, 3, 5, 10, 15, 25, 50, 100, 200, 350, 500)
 
 dir.create(CACHE_DIR, showWarnings = FALSE)
+dir.create(GEV_OUT_DIR, recursive = TRUE, showWarnings = FALSE)
 cat("Working directory:", getwd(), "\n")
 
 
@@ -130,16 +134,17 @@ cat(sprintf("Annual maximum surge: mean %.2f m, sd %.2f m, range %.2f-%.2f m\n",
 if (nrow(am) < 20)
   warning("Fewer than 20 annual maxima. The GEV shape estimate will be unstable.")
 
-# Independent validation: the slope of the removed offset is a local sea level
-# rise estimate relative to the 1983-2001 tidal epoch. Portland's published rate
-# is roughly 2 mm/yr. A result near that confirms the pipeline is sound.
+# Plausibility check: the slope of the removed offset is a local sea level
+# rise estimate relative to the 1983-2001 tidal epoch. It uses the same gauge
+# record, so agreement with the published trend supports the datum processing
+# but does not independently validate the GEV model.
 slr <- lm(mean_residual ~ year, data = am)
 slr_rate <- unname(coef(slr)["year"]) * 1000
 slr_p    <- summary(slr)$coefficients["year", "Pr(>|t|)"]
 cat(sprintf("\nSEA LEVEL CHECK: mean annual residual trend %+.2f mm/yr (p = %.4f)\n",
             slr_rate, slr_p))
 cat("  Compare against the published rate for this gauge at\n")
-cat("  tidesandcurrents.noaa.gov/sltrends/. A close match validates the pipeline.\n")
+cat("  tidesandcurrents.noaa.gov/sltrends/. A close match supports the datum-processing check.\n")
 
 
 # ---- section 3: stationarity of the surge itself ----------------------------
@@ -245,7 +250,8 @@ print(rl, row.names = FALSE, digits = 3)
 # ---- section 6: diagnostics -------------------------------------------------
 # A fit that has not been checked against the data is not a result.
 
-png("gev_diagnostics.png", width = 1400, height = 1100, res = 130)
+png(file.path(GEV_OUT_DIR, "gev_diagnostics.png"),
+    width = 1400, height = 1100, res = 130)
 par(mfrow = c(2, 2), mar = c(4.2, 4.2, 3, 1))
 
 plot(am$year, am$surge, type = "b", pch = 19, cex = 0.7,
@@ -279,13 +285,13 @@ legend("topleft", bty = "n", cex = 0.8,
        lty = c(1, 1, 3, NA), pch = c(19, NA, NA, 4), lwd = c(2, 8, 2, NA))
 
 dev.off()
-cat("\nDiagnostics written to gev_diagnostics.png\n")
+cat("\nDiagnostics written to", file.path(GEV_OUT_DIR, "gev_diagnostics.png"), "\n")
 
 
 # ---- section 7: export for the Python flood model ---------------------------
 
-write.csv(rl, "surge_return_levels.csv", row.names = FALSE)
-write.csv(am, "annual_maxima.csv", row.names = FALSE)
+write.csv(rl, file.path(GEV_OUT_DIR, "surge_return_levels.csv"), row.names = FALSE)
+write.csv(am, file.path(GEV_OUT_DIR, "annual_maxima.csv"), row.names = FALSE)
 
 cat('\n--- paste into damage.py, replacing the illustrative values ---\n')
 cat(sprintf('GEV_LOC   = %.4f   # NOAA station %s, %d-%d (n = %d years)\n',
@@ -309,6 +315,7 @@ writeLines(c(
           slr_rate, slr_p),
   "NOTE: this is METEOROLOGICAL SURGE only. Mean sea level rise has been",
   "removed and must be added separately in the risk model."
-), "gev_fit_summary.txt")
+), file.path(GEV_OUT_DIR, "gev_fit_summary.txt"))
 
-cat("\nWritten: surge_return_levels.csv, annual_maxima.csv, gev_fit_summary.txt\n")
+cat("\nWritten to", GEV_OUT_DIR,
+    ": surge_return_levels.csv, annual_maxima.csv, gev_fit_summary.txt\n")

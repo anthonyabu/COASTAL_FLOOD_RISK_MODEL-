@@ -66,7 +66,8 @@ bounds where the scheme applies: floodplain flow, not supercritical or strongly
 advective flow.
 
 Mass balance is audited on every production run. Worst error across all 12 return
-periods: **0.00000%**, zero flux-limiter correction.
+periods: **0.00000%**, with zero negative-depth clipping correction. The current
+implementation does not log how often the conservative flux limiter activates.
 
 Run `python test_solver.py` to reproduce.
 
@@ -82,12 +83,13 @@ NOAA predictions reference the 1983–2001 tidal epoch, so the residual carries
 accumulated sea level rise as well as meteorology — the annual mean residual is
 therefore removed year by year, leaving meteorological surge.
 
-**Two independent validations:**
+**Implementation cross-check and datum-processing plausibility check:**
 
-- The slope of the *removed* offset is a local sea level rise estimate: **+2.83 mm/yr
-  (p < 0.0001)**. Not fitted to anything — it falls out of the datum handling.
 - The hand-rolled MLE was cross-checked against the `extRemes` package, which returned
   **+0.6900, +0.1353, −0.1319 — identical to four decimal places**.
+- Separately, the slope of the *removed* offset provides a plausibility check on the
+  datum processing: **+2.83 mm/yr (p < 0.0001)**. It is derived from the same gauge
+  record and is therefore not an independent validation of the GEV model.
 
 | | Invented (v1) | Fitted (v2) |
 |---|---|---|
@@ -126,11 +128,14 @@ probability integral, so the least-constrained part of the vulnerability model d
 the headline number. Refining the hydraulics further is misallocated effort while the
 damage curve is uncalibrated.
 
-**2. Conflating hydraulic and structural elevation inflates risk ~3×.** The first
-working version read water depth over the channel bed as water depth on the carriageway,
-so a bridged crossing appeared severely damaged in events whose surge never approached
-its deck. Separating the two fields moved EAD from $539,930/yr to $196,827/yr with no
-change to the hydraulics. A general trap wherever assets are rasterised onto a DEM.
+**2. Conflating hydraulic and structural elevation inflated risk ~3× in the historical
+v1 configuration.** The first working version read water depth over the channel bed as
+water depth on the carriageway, so a bridged crossing appeared severely damaged in
+events whose surge never approached its deck. In that obsolete v1 hazard/terrain
+configuration, separating the two fields moved EAD from $539,930/yr to $196,827/yr
+with no change to the hydraulics. These values are not directly comparable with the
+current fitted-hazard EAD of $13,210/yr. The modelling distinction remains a general
+trap wherever assets are rasterised onto a DEM.
 
 **3. Tide timing dominates storm size in a macrotidal setting.** Across the entire
 1.5-to-500-year range the peak still water level spans only **0.59 m**, because tidal
@@ -140,13 +145,15 @@ the conservative case — but a defensible assessment would treat tide–surge t
 joint probability, and that choice plausibly matters more than any refinement of the
 hydraulic scheme.
 
-**Bonus: static maps are adequate here, but only because the basin equilibrates fast.**
-Holding peak water level fixed and varying surge duration, the static bathtub result is
-within a few percent for surges of 2 h and longer, and overstates damage by ~26% at 1 h.
-Marsh roughness cuts damage 58% for a 0.5 h surge but 19% at 3 h — friction sets the
-filling rate, not the equilibrium level. A bathtub calculation cannot represent that
-axis at all, so any assessment of marsh as natural coastal protection requires a dynamic
-model.
+**Bonus: static and dynamic results diverge non-monotonically with duration and
+roughness.** Holding peak water level fixed, dynamic damage ranges from 94.7% of the
+static result at 2 h to 110.7% at 6 h and 159.6% at 24 h. The dynamic peak-inundation
+area remains below the static area, so the damage exceedance must be diagnosed before
+it is interpreted physically; possible contributors include transient water-surface
+overshoot, use of a composite cellwise maximum-depth field, numerical sensitivity and
+the nonlinear threshold damage curve. Marsh roughness materially changes the dynamic
+result, an axis a bathtub calculation cannot represent, but the present sweep is a
+diagnostic rather than a calibrated estimate of natural-protection benefit.
 
 ![Duration and roughness sensitivity](figures/fig7_duration_sensitivity.png)
 
@@ -161,15 +168,23 @@ python analysis.py          # 12-event ensemble, ~5 min
 python duration_study.py    # sensitivity studies, ~5 min
 ```
 
-Figures and tables are written to `outputs/`. Paths resolve relative to the scripts, so
-it runs from any directory. Set `FLOOD_OUT` to redirect output.
+New runs write figures and tables to the untracked `outputs/` directory. Paths resolve
+relative to the scripts, so the model runs from any directory; set `FLOOD_OUT` to
+redirect output. The repository's `figures/` and `results/` directories are curated,
+tracked snapshots for the README and reproducibility record. They are updated only
+after a run has been checked, which prevents an incomplete local run from silently
+replacing the published reference outputs.
 
 The ensemble is cached. The cache is fingerprinted against the terrain, roughness, deck
 elevations, forcing parameters and return periods — change any of them and it discards
 the cache and re-runs rather than silently mixing stale hydraulics with new terrain.
 
 For the extreme value analysis, run `fit_surge_gev_v2.R` in R. It downloads directly
-from the NOAA CO-OPS API and requires no packages beyond base R.
+from the NOAA CO-OPS API using base R. Install `extRemes` to reproduce the independent
+MLE implementation cross-check. The script writes `annual_maxima.csv`,
+`surge_return_levels.csv`, `gev_fit_summary.txt` and `gev_diagnostics.png` under
+`results/gev/`. These evidence files should be committed only after all diagnostics
+have been inspected.
 
 ---
 
