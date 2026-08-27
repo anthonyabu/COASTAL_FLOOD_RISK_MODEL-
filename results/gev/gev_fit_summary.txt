@@ -1,0 +1,10 @@
+station: 8418150
+datum: MSL
+years: 1980-2025 (n = 46 after coverage filter)
+GEV location: 0.6900 m
+GEV scale: 0.1353 m
+GEV shape: -0.1319
+surge trend: +1.09 mm/yr (p = 0.5314)
+sea level trend from removed offset: +2.83 mm/yr (p = 0.0000)
+NOTE: this is METEOROLOGICAL SURGE only. Mean sea level rise has been
+removed and must be added separately in the risk model.
